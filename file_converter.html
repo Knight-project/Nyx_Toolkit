@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Processor</title>
+    <!-- JS Libraries for Conversion -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js" integrity="sha512-H+rglffZ6f5Jv8cKteOSCEAmsS2N2hG46ArK563Yg/W4URxB8jN/iA2gM8AUGN_sXw36IeA2362+yglSo2Jmg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" integrity="sha512-Ikkwb1X9c+gn+6H+b7atfg2i1sC9Zq131xT/KTR1GniYl7T6guXmN0/5G2lR6/I2kX+2/N05r/h03sM/5/sAsw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-qZvrmS2ekKPF2mSznTQsxqPgnpkI4DNTlrdUmTzrDgektczlKNRRhy5X5AAOnx5S09ydFYWWNSfcEqDTTHgtNA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js" integrity="sha512-ml/QK31P5lWFresGjevbU45j2/tJfNn/CMT+2H2V/dtP0/T3CBlxucjfsfAI+VvP0T2hW3DStqH2C3h/brll8w==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <!-- Icons and Fonts -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Arial&display=swap" rel="stylesheet">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+    <style>
+      * {
+        -webkit-tap-highlight-color: transparent;
+      }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            width: 100%;
+        }
+        .card {
+            margin-bottom: 25px;
+        }
+        .card__title i {
+            margin-right: 12px;
+        }
+        .converter-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: block;
+        }
+        select, button {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            font-family: 'Arial', sans-serif;
+            font-size: 1rem;
+        }
+        button {
+            background-color: #333;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        button:hover {
+            background-color: #555;
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        #upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+        #upload-area.dragover {
+            background-color: #f0f0f0;
+            border-color: #333;
+        }
+        #file-input {
+            display: none;
+        }
+        #status {
+            text-align: center;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        .spinner {
+            border: 3px solid rgba(0, 0, 0, 0.2);
+            border-radius: 50%;
+            border-top-color: #fff;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s ease-in-out infinite;
+        }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h2 class="card__title"><i class="fas fa-cogs"></i> Document Processor</h2>
+            <div class="converter-grid">
+                <div>
+                    <label for="conversion-type">1. Select Conversion Type</label>
+                    <select id="conversion-type">
+                        <option value="docx-to-pdf">Word (DOCX) &rarr; PDF</option>
+                        <option value="img-to-pdf">Image (JPG/PNG) &rarr; PDF</option>
+                        <option value="txt-to-pdf">Text (TXT) &rarr; PDF</option>
+                        <option value="pdf-to-png">PDF &rarr; Image (PNG)</option>
+                        <option value="pdf-to-txt">PDF &rarr; Text (TXT)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label>2. Upload Your File</label>
+                    <label for="file-input" id="upload-area">
+                        <i class="fas fa-upload fa-2x"></i>
+                        <p id="upload-text">Click or drag & drop a file</p>
+                    </label>
+                    <input type="file" id="file-input">
+                </div>
+
+                <div>
+                    <button id="convert-btn" disabled>
+                        <span id="btn-text">Convert</span>
+                        <div id="spinner" class="spinner hidden"></div>
+                    </button>
+                </div>
+            </div>
+            <div id="status"></div>
+        </div>
+    </div>
+
+    <script>
+        let conversionType = document.getElementById('conversion-type');
+        let uploadArea = document.getElementById('upload-area');
+        let fileInput = document.getElementById('file-input');
+        let uploadText = document.getElementById('upload-text');
+        let convertBtn = document.getElementById('convert-btn');
+        let btnText = document.getElementById('btn-text');
+        let spinner = document.getElementById('spinner');
+        let statusDiv = document.getElementById('status');
+
+        let currentFile = null;
+
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js`;
+
+        const fileTypes = {
+            'docx-to-pdf': { accept: '.docx', text: 'a .DOCX file' },
+            'img-to-pdf': { accept: 'image/jpeg,image/png', text: 'a .JPG or .PNG file' },
+            'txt-to-pdf': { accept: '.txt', text: 'a .TXT file' },
+            'pdf-to-png': { accept: '.pdf', text: 'a .PDF file' },
+            'pdf-to-txt': { accept: '.pdf', text: 'a .PDF file' },
+        };
+
+        function updateUiForConversionType() {
+            const selectedType = conversionType.value;
+            const { accept, text } = fileTypes[selectedType];
+            fileInput.accept = accept;
+            uploadText.textContent = `Click or drag & drop ${text}`;
+            resetState();
+        }
+
+        function resetState() {
+            currentFile = null;
+            fileInput.value = '';
+            statusDiv.textContent = '';
+            convertBtn.disabled = true;
+            const { text } = fileTypes[conversionType.value];
+            uploadText.textContent = `Click or drag & drop ${text}`;
+        }
+
+        conversionType.addEventListener('change', updateUiForConversionType);
+
+        uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+        uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', () => {
+             if (fileInput.files.length > 0) handleFile(fileInput.files[0]);
+        });
+
+        function validateFileType(file, acceptString) {
+            const allowedTypes = acceptString.split(',').map(t => t.trim());
+            const fileMimeType = file.type;
+            const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+
+            for (const type of allowedTypes) {
+                if (type.startsWith('.')) { // Check extension
+                    if (fileExtension === type) return true;
+                } else if (type.endsWith('/*')) { // Check wildcard MIME
+                    if (fileMimeType.startsWith(type.slice(0, -1))) return true;
+                } else { // Check specific MIME
+                    if (fileMimeType === type) return true;
+                }
+            }
+            // Fallback for types where MIME might be unreliable (e.g. docx)
+            if (allowedTypes.includes('.docx') && fileExtension === '.docx') return true;
+            
+            return false;
+        }
+
+        function handleFile(file) {
+            const selectedType = conversionType.value;
+            const { accept, text } = fileTypes[selectedType];
+
+            if (!validateFileType(file, accept)) {
+                statusDiv.textContent = `Invalid file type. Please select ${text}.`;
+                resetState();
+                return;
+            }
+
+            currentFile = file;
+            uploadText.textContent = `Selected: ${file.name}`;
+            statusDiv.textContent = '';
+            convertBtn.disabled = false;
+        }
+
+        function setLoading(isLoading) {
+            convertBtn.disabled = isLoading;
+            spinner.classList.toggle('hidden', !isLoading);
+            btnText.textContent = isLoading ? 'Processing...' : 'Convert';
+        }
+
+        convertBtn.addEventListener('click', async () => {
+            if (!currentFile) return;
+            setLoading(true);
+            statusDiv.textContent = '';
+            try {
+                const type = conversionType.value;
+                const newFileName = currentFile.name.split('.').slice(0, -1).join('.') || 'download';
+
+                switch(type) {
+                    case 'docx-to-pdf': await convertDocxToPdf(currentFile, newFileName); break;
+                    case 'img-to-pdf': await convertImageToPdf(currentFile, newFileName); break;
+                    case 'txt-to-pdf': await convertTxtToPdf(currentFile, newFileName); break;
+                    case 'pdf-to-png': await convertPdfToPng(currentFile, newFileName); break;
+                    case 'pdf-to-txt': await convertPdfToTxt(currentFile, newFileName); break;
+                }
+                statusDiv.textContent = 'Conversion successful!';
+            } catch (error) {
+                console.error('Conversion failed:', error);
+                statusDiv.textContent = `An error occurred: ${error.message}`;
+            } finally {
+                setLoading(false);
+            }
+        });
+        
+        async function saveOrShareFile(blob, fileName) {
+            if (navigator.canShare && navigator.canShare({ files: [new File([blob], fileName, { type: blob.type })] })) {
+                try {
+                    await navigator.share({
+                        files: [new File([blob], fileName, { type: blob.type })],
+                        title: 'Download',
+                        text: fileName,
+                    });
+                    return;
+                } catch (error) {
+                    if (error.name === 'AbortError') return; // User cancelled share
+                }
+            }
+            // Fallback to download
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+        }
+
+        const { jsPDF } = window.jspdf;
+
+        async function convertDocxToPdf(file, newFileName) {
+            const arrayBuffer = await file.arrayBuffer();
+            const result = await mammoth.convertToHtml({ arrayBuffer });
+            const doc = new jsPDF({ unit: 'pt', hotfixes: ['px_scaling'] });
+            const sanitizedHtml = DOMPurify.sanitize(result.value);
+            await doc.html(sanitizedHtml, { x: 15, y: 15, width: 565, windowWidth: 650 });
+            const blob = doc.output('blob');
+            await saveOrShareFile(blob, `${newFileName}.pdf`);
+        }
+
+        async function convertImageToPdf(file, newFileName) {
+            const doc = new jsPDF();
+            const imgData = await new Promise(resolve => {
+                const reader = new FileReader();
+                reader.onload = e => resolve(e.target.result);
+                reader.readAsDataURL(file);
+            });
+            const img = new Image();
+            await new Promise(resolve => { img.onload = resolve; img.src = imgData; });
+            const { width, height } = doc.internal.pageSize;
+            const ratio = img.height / img.width;
+            const imgHeight = width * ratio;
+            doc.addImage(imgData, file.type === 'image/jpeg' ? 'JPEG' : 'PNG', 0, 0, width, Math.min(imgHeight, height));
+            const blob = doc.output('blob');
+            await saveOrShareFile(blob, `${newFileName}.pdf`);
+        }
+
+        async function convertTxtToPdf(file, newFileName) {
+            const text = await file.text();
+            const doc = new jsPDF();
+            const lines = doc.splitTextToSize(text, 180);
+            doc.text(lines, 10, 10);
+            const blob = doc.output('blob');
+            await saveOrShareFile(blob, `${newFileName}.pdf`);
+        }
+
+        async function convertPdfToPng(file, newFileName) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            statusDiv.textContent = `Found ${pdf.numPages} pages. Converting page by page...`;
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const viewport = page.getViewport({ scale: 2.0 });
+                const canvas = document.createElement('canvas');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                const context = canvas.getContext('2d');
+                await page.render({ canvasContext: context, viewport }).promise;
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                await saveOrShareFile(blob, `${newFileName}-page-${i}.png`);
+            }
+        }
+
+        async function convertPdfToTxt(file, newFileName) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            let fullText = '';
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                fullText += textContent.items.map(s => s.str).join(' ') + '\n\n';
+            }
+            const blob = new Blob([fullText], { type: 'text/plain' });
+            await saveOrShareFile(blob, `${newFileName}.txt`);
+        }
+
+        updateUiForConversionType();
+
+    </script>
+</body>
+</html>
