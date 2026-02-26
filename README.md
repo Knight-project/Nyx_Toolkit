@@ -12,6 +12,8 @@ Nyx Toolkit is a collection of open-source document manipulation tools designed 
 
 **Nyx Toolkit operates entirely within the browser.** By utilizing client-side processing, sensitive data never leaves the local environment.
 
+> ### [Tryout now!](https://nyxtoolkit.web.app/)
+
 ---
 
 ## 🚀 Core Utilities
@@ -55,7 +57,6 @@ Nyx Toolkit is a collection of open-source document manipulation tools designed 
 - [ ] **Advanced OCR:** Enhanced text extraction for scanned documents.
 - [ ] **Syntax Highlighting:** Integration for Markdown code blocks.
 - [ ] **Extended Formats:** `CSV`, `JSON`, and `EPUB` support.
-- [ ] **PWA Support:** Offline-first functionality.
 
 ---
 
