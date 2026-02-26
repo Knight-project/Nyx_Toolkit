@@ -47,8 +47,13 @@ Nyx Toolkit is a collection of open-source document manipulation tools designed 
 
 ### 📝 Markdown to PNG
 
-- **Functionality:** Renders Markdown text as shareable PNG images.
+- **Functionality:** Scan the pdf for text and makes the text annotable.
 - **Note:** Current build does not include code block syntax highlighting.
+
+### 📄 PDF OCR
+
+- **Functionality:** Renders Markdown text as shareable PNG images.
+- **Note:** Current build is not the most reliable for very warped texts.
 
 ---
 
